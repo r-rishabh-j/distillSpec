@@ -11,6 +11,10 @@ This project investigates the impact of different divergence objectives-Forward 
 
 Standard off-policy distillation suffers from exposure bias. We utilize **On-Policy Distillation**, where the student learns from its own generated trajectories scored by a frozen teacher . We demonstrate that the optimal divergence metric is highly dependent on the **entropy profile** of the downstream task.
 
+## Batched Speculative Decoding for Fast Eval
+
+A speculative decoding framework which supports batched inputs was implemented first to enable fast evaluation. Implementation is available at [batched_specdec](https://github.com/r-rishabh-j/batched_specdec) and is added as a submodule.
+
 ## 🚀 Key Findings
 
 Our experiments show that **Mode-Seeking** behavior is preferred for reasoning, while **Mean-Seeking/Balanced** behavior is preferred for open-ended generation .
