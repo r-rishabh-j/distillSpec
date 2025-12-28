@@ -1,8 +1,6 @@
 import torch
 from datasets import load_dataset
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import os
 import tqdm
 import json
@@ -79,15 +77,15 @@ def map_to_prompts(example):
     )}
 
 dataset = dataset.map(map_to_prompts)
-target_model = AutoModelForCausalLM.from_pretrained(target, device_map="cuda", torch_dtype="auto")
+device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+target_model = AutoModelForCausalLM.from_pretrained(target, device_map=device, torch_dtype="auto")
 target_model.eval()
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def evaluate_generation(draft_model, prompts, max_new_tokens):
     speculative_results = []
     alphas = []
     outputs = []
-    batch = 40
+    batch = 2
 
     for start_idx in tqdm.tqdm(range(0, len(prompts), batch), total=(len(prompts)+batch-1)//batch):
         end_idx = min(start_idx + batch, len(prompts))
@@ -116,7 +114,7 @@ def evaluate_generation(draft_model, prompts, max_new_tokens):
 
 for draft_name, draft in config['models']['drafts'].items():
     print(f"Evaluating draft model: {draft_name}")
-    draft_model  = AutoModelForCausalLM.from_pretrained(draft, device_map="cuda", torch_dtype="auto")
+    draft_model  = AutoModelForCausalLM.from_pretrained(draft, device_map=device, torch_dtype="auto")
     draft_model.eval()
     results, alphas, outputs = evaluate_generation(draft_model, dataset, gen_len)
     with open(os.path.join(config['dir'], f'{draft_name}-stats.pkl'), 'wb') as f:
