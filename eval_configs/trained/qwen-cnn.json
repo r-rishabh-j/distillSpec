@@ -1,0 +1,19 @@
+{
+    "dir": "./results/qwen-cnn-1000/",
+    "num_prompts": 1000,
+    "gen_len": 100,
+    "gamma": 5,
+    "logits_processor": {
+        "type": "NucleusProcessor",
+        "temperature": 0.6,
+        "top_p": 0.95
+    },
+    "dataset_name": "rishabhrj11/cnn_dailymail_512",
+    "models": {
+        "target": "Qwen/Qwen3-4B-Instruct-2507",
+        "drafts": {
+            "base": "Qwen/Qwen3-0.6B-Instruct"
+        }
+    },
+    "print_outputs": true
+}

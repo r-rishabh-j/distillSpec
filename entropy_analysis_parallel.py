@@ -9,31 +9,39 @@ from transformers import set_seed
 from batched_specdec import speculative_generate_batch
 from batched_specdec.logits_processor import NucleusProcessor, GreedyProcessor
 from transformers import AutoTokenizer, AutoModelForCausalLM
+import argparse
 
 SEED = 42
 set_seed(SEED)
 
-config = {
-    'dir': './results/gsm-qwen-1000/',
-    'num_prompts': 1000,
-    'gen_len': 312,
-    'gamma': 5,
-    'logits_processor': {
-        'type': 'NucleusProcessor',
-        'temperature': 0.6,
-        'top_p': 0.95
-    },
-    'dataset_name': 'openai/gsm8k',
-    # 'quantize_teacher': True,
-    'models': {
-        'target': 'Qwen/Qwen3-4B-Instruct-2507',
-        'drafts': {
-            'base': 'Qwen/Qwen3-0.6B',
-        }
-    }
-}
+# load config from args. if none, default to file
+parser = argparse.ArgumentParser()
+parser.add_argument('--config', type=str, default=None)
+args = parser.parse_args()
 
-DEBUG=0
+if args.config is not None:
+    with open(args.config, 'r') as f:
+        config = json.load(f)
+else:
+    config = {
+        'dir': './results/gsm-qwen-1000/',
+        'num_prompts': 1000,
+        'gen_len': 100,
+        'gamma': 5,
+        'logits_processor': {
+            'type': 'NucleusProcessor',
+            'temperature': 0.6,
+            'top_p': 0.95
+        },
+        'dataset_name': 'openai/gsm8k',
+        'models': {
+            'target': 'Qwen/Qwen3-4B-Instruct-2507',
+            'drafts': {
+                'base': 'Qwen/Qwen3-0.6B',
+            }
+        },
+        'print_outputs': True,
+    }
 
 if not os.path.exists(config['dir']):
     os.makedirs(config['dir'])
@@ -48,11 +56,11 @@ else:
 
 # Load dataset
 if config.get('dataset_name') == 'openai/gsm8k':
-    dataset = load_dataset("openai/gsm8k", "main", split='test').shuffle(seed=SEED) # First 50 examples for quick eval
+    dataset = load_dataset("openai/gsm8k", "main", split='test').shuffle(seed=SEED)
 else:
-    dataset = load_dataset("rishabhrj11/cnn_dailymail_512", split='test').shuffle(seed=SEED) # 1% for demo; remove slice for full run
+    dataset = load_dataset("rishabhrj11/cnn_dailymail_512", split='test').shuffle(seed=SEED)
 
-dataset=dataset.select(list(range(50, 50+NUM_PROMPTS)))
+dataset=dataset.select(list(range(NUM_PROMPTS)))
 
 target=config['models']['target']
 tokenizer = AutoTokenizer.from_pretrained(target)
@@ -109,6 +117,11 @@ def evaluate_generation(draft_model, prompts, max_new_tokens):
         speculative_results.extend(stats)
         alphas.extend(alpha)
         outputs.extend(output_ids_sd)
+        if config['print_outputs']:
+            for i, output_ids in enumerate(output_ids_sd):
+                print(f'>>>>>>>>>> output {i} <<<<<<<<<<')
+                print(tokenizer.decode(output_ids, skip_special_tokens=True))
+                print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
 
     return speculative_results, alphas, outputs
 
