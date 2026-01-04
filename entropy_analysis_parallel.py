@@ -41,7 +41,8 @@ else:
                 'base': 'Qwen/Qwen3-0.6B',
             }
         },
-        'print_outputs': True,
+        'batch_size': 40,
+        'show_output': True,
     }
 
 if not os.path.exists(config['dir']):
@@ -87,22 +88,20 @@ def map_to_prompts(example):
 
 dataset = dataset.map(map_to_prompts)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-target_model = AutoModelForCausalLM.from_pretrained(target, device_map=device, torch_dtype=torch.bfloat16)
+target_model = AutoModelForCausalLM.from_pretrained(target, device_map=device, dtype=torch.bfloat16)
 target_model.eval()
 
 def evaluate_generation(draft_model, prompts, max_new_tokens, output_file=None):
     speculative_results = []
     alphas = []
     outputs = []
-    batch = 3
+    batch_size = config['batch_size']
 
-    for start_idx in tqdm.tqdm(range(0, len(prompts), batch), total=(len(prompts)+batch-1)//batch):
-        end_idx = min(start_idx + batch, len(prompts))
+    for start_idx in tqdm.tqdm(range(0, len(prompts), batch_size), total=(len(prompts)+batch_size-1)//batch_size):
+        end_idx = min(start_idx + batch_size, len(prompts))
         batch_prompts = prompts[start_idx:end_idx]['prompt']
         print(f"Evaluating prompts {start_idx} to {end_idx-1}...")
-        input_ids = []
-        for prompt in batch_prompts:
-            input_ids.append(tokenizer([prompt], return_tensors="pt", max_length=1024, truncation=True).input_ids[0].tolist())
+        input_ids = tokenizer(batch_prompts, max_length=1024, truncation=True).input_ids
         output_ids_sd, alpha, stats = speculative_generate_batch(
                 input_ids,
                 draft_model,
@@ -114,7 +113,7 @@ def evaluate_generation(draft_model, prompts, max_new_tokens, output_file=None):
                 pad_token_id=tokenizer.pad_token_id,
                 collect_stats=True, 
                 tokenizer=tokenizer,
-                # debug=False
+                debug=config.get('show_output', True)
             )
         print("Acceptance rate:", np.mean(alpha))
         speculative_results.extend(stats)
@@ -134,7 +133,7 @@ def evaluate_generation(draft_model, prompts, max_new_tokens, output_file=None):
 
 for draft_name, draft in config['models']['drafts'].items():
     print(f"Evaluating draft model: {draft_name}")
-    draft_model  = AutoModelForCausalLM.from_pretrained(draft, device_map=device, torch_dtype=torch.bfloat16)
+    draft_model  = AutoModelForCausalLM.from_pretrained(draft, device_map=device, dtype=torch.bfloat16)
     draft_model.eval()
     draft_model.config.use_cache = False  # Disable internal caching
     results, alphas, outputs = evaluate_generation(draft_model, dataset, gen_len)
