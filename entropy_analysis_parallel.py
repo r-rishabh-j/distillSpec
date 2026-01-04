@@ -1,7 +1,8 @@
+import os
 import torch
 from datasets import load_dataset
 import numpy as np
-import os
+import gc
 import tqdm
 import json
 import pickle
@@ -86,14 +87,14 @@ def map_to_prompts(example):
 
 dataset = dataset.map(map_to_prompts)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-target_model = AutoModelForCausalLM.from_pretrained(target, device_map=device, torch_dtype="auto")
+target_model = AutoModelForCausalLM.from_pretrained(target, device_map=device, torch_dtype=torch.bfloat16)
 target_model.eval()
 
-def evaluate_generation(draft_model, prompts, max_new_tokens):
+def evaluate_generation(draft_model, prompts, max_new_tokens, output_file=None):
     speculative_results = []
     alphas = []
     outputs = []
-    batch = 2
+    batch = 3
 
     for start_idx in tqdm.tqdm(range(0, len(prompts), batch), total=(len(prompts)+batch-1)//batch):
         end_idx = min(start_idx + batch, len(prompts))
@@ -111,24 +112,31 @@ def evaluate_generation(draft_model, prompts, max_new_tokens):
                 max_gen_len=max_new_tokens,
                 eos_tokens_id=tokenizer.eos_token_id,
                 pad_token_id=tokenizer.pad_token_id,
-                collect_stats=True
+                collect_stats=True, 
+                tokenizer=tokenizer,
+                # debug=False
             )
         print("Acceptance rate:", np.mean(alpha))
         speculative_results.extend(stats)
         alphas.extend(alpha)
         outputs.extend(output_ids_sd)
-        if config['print_outputs']:
-            for i, output_ids in enumerate(output_ids_sd):
-                print(f'>>>>>>>>>> output {i} <<<<<<<<<<')
-                print(tokenizer.decode(output_ids, skip_special_tokens=True))
-                print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        
+        # Free memory after each batch
+        del input_ids
+        gc.collect()  # Force Python garbage collection first
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        elif torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+            torch.mps.synchronize()
 
     return speculative_results, alphas, outputs
 
 for draft_name, draft in config['models']['drafts'].items():
     print(f"Evaluating draft model: {draft_name}")
-    draft_model  = AutoModelForCausalLM.from_pretrained(draft, device_map=device, torch_dtype="auto")
+    draft_model  = AutoModelForCausalLM.from_pretrained(draft, device_map=device, torch_dtype=torch.bfloat16)
     draft_model.eval()
+    draft_model.config.use_cache = False  # Disable internal caching
     results, alphas, outputs = evaluate_generation(draft_model, dataset, gen_len)
     with open(os.path.join(config['dir'], f'{draft_name}-stats.pkl'), 'wb') as f:
         pickle.dump(results, f)
@@ -141,6 +149,9 @@ for draft_name, draft in config['models']['drafts'].items():
     }
     del outputs
     del draft_model
+    gc.collect()
+    if torch.backends.mps.is_available():
+        torch.mps.empty_cache()
 
 with open(os.path.join(config['dir'], 'config.json'), 'w') as f:
     json.dump(config, f, indent=4)
