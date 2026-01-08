@@ -27,7 +27,7 @@ else:
     config = {
         'dir': './results/gsm-qwen-1000/',
         'num_prompts': 1000,
-        'gen_len': 100,
+        'gen_len': 312,
         'gamma': 5,
         'logits_processor': {
             'type': 'NucleusProcessor',
@@ -41,7 +41,7 @@ else:
                 'base': 'Qwen/Qwen3-0.6B',
             }
         },
-        'batch_size': 40,
+        'batch_size': 64,
         'show_output': True,
     }
 
@@ -88,14 +88,14 @@ def map_to_prompts(example):
 
 dataset = dataset.map(map_to_prompts)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-target_model = AutoModelForCausalLM.from_pretrained(target, device_map=device, dtype=torch.bfloat16)
+target_model = AutoModelForCausalLM.from_pretrained(target, device_map=device, dtype="auto")
 target_model.eval()
 
 def evaluate_generation(draft_model, prompts, max_new_tokens, output_file=None):
     speculative_results = []
     alphas = []
     outputs = []
-    batch_size = config['batch_size']
+    batch_size = config.get('batch_size', 4)
 
     for start_idx in tqdm.tqdm(range(0, len(prompts), batch_size), total=(len(prompts)+batch_size-1)//batch_size):
         end_idx = min(start_idx + batch_size, len(prompts))
@@ -133,9 +133,8 @@ def evaluate_generation(draft_model, prompts, max_new_tokens, output_file=None):
 
 for draft_name, draft in config['models']['drafts'].items():
     print(f"Evaluating draft model: {draft_name}")
-    draft_model  = AutoModelForCausalLM.from_pretrained(draft, device_map=device, dtype=torch.bfloat16)
+    draft_model  = AutoModelForCausalLM.from_pretrained(draft, device_map=device, dtype="auto")
     draft_model.eval()
-    draft_model.config.use_cache = False  # Disable internal caching
     results, alphas, outputs = evaluate_generation(draft_model, dataset, gen_len)
     with open(os.path.join(config['dir'], f'{draft_name}-stats.pkl'), 'wb') as f:
         pickle.dump(results, f)
