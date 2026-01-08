@@ -24,7 +24,7 @@ Our experiments show that **Mode-Seeking** behavior is preferred for reasoning, 
 | **Math Reasoning** | GSM8k | Low (Deterministic) | **Reverse KL (RKL)** | RKL forces the student to "snap" to the correct reasoning path, ignoring valid but unaligned tokens.|
 | **Summarization** | CNN/DM | High (Ambiguous) | **JSD** | JSD balances coverage and precision, preventing collapse in high-entropy regions.|
 
-### Quantitative Results (Token Acceptance Rate )
+### Quantitative Results (Token Acceptance Rate)
 
 * **Qwen3 (GSM8k):** RKL achieved **53.93%**, outperforming Baseline (49.52%) and FKL.
 
@@ -53,8 +53,8 @@ The project includes a custom evaluation harness for **Speculative Decoding with
 
 ### Requirements
 
-* Python 3.8+
-* PyTorch (with CUDA support)
+* Python 3.11+
+* PyTorch (CUDA or MPS)
 * Hugging Face `transformers`, `trl`, `bitsandbytes`
 
 <!--
@@ -84,11 +84,21 @@ python eval_speculative.py \
 
 ```
 -->
+
+## Checkpoints
+
+Best performing checkpoints are available here:
+
+| Model | Dataset | Divergence | Link |
+| --- | --- | --- | --- |
+| Qwen-0.6B | GSM8K | Reverse KL | [rishabhrj11/distillspec-qwen600](https://huggingface.co/rishabhrj11/distillspec-qwen600) |
+| SmolLM-350M | CNNDM | JSD | [rishabhrj11/distillspec-smollm-cnn-b5](https://huggingface.co/rishabhrj11/distillspec-smollm-cnn-b5) |
+
 ## 📊 Analysis
 
 We analyze performance relative to **Teacher Entropy**.
 
-* **Low Entropy ():** RKL dominates, maximizing precision.
+* **Low Entropy:** RKL dominates, maximizing precision.
 
 
-* **High Entropy ():** RKL degrades; JSD remains robust where diversity is required .
+* **High Entropy:** RKL degrades; JSD remains robust where diversity is required .
