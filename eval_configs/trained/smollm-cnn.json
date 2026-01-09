@@ -1,7 +1,7 @@
 {
     "dir": "./results/smollm-cnn-1000/",
     "num_prompts": 1000,
-    "gen_len": 100,
+    "gen_len": 256,
     "gamma": 5,
     "logits_processor": {
         "type": "NucleusProcessor",
@@ -15,6 +15,6 @@
             "base": "HuggingFaceTB/SmolLM-135M-Instruct"
         }
     },
-    "batch_size": 64,
+    "batch_size": 4,
     "show_output": true
 }

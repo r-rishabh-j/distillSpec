@@ -1,7 +1,7 @@
 {
     "dir": "./results/smollm-gsm8k-1000/",
     "num_prompts": 1000,
-    "gen_len": 100,
+    "gen_len": 256,
     "gamma": 5,
     "logits_processor": {
         "type": "NucleusProcessor",

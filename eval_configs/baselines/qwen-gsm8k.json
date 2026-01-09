@@ -15,5 +15,6 @@
             "base": "Qwen/Qwen3-0.6B"
         }
     },
-    "print_outputs": true
+    "batch_size": 4,
+    "show_output": true
 }

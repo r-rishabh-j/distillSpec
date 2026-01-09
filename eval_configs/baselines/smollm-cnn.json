@@ -15,5 +15,6 @@
             "base": "HuggingFaceTB/SmolLM-135M-Instruct"
         }
     },
-    "print_outputs": true
+    "batch_size": 3,
+    "show_output": true
 }
