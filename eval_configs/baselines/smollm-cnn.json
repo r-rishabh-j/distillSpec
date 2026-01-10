@@ -5,7 +5,7 @@
     "gamma": 5,
     "logits_processor": {
         "type": "NucleusProcessor",
-        "temperature": 0.7,
+        "temperature": 0.8,
         "top_p": 0.95
     },
     "dataset_name": "rishabhrj11/cnn_dailymail_512",
@@ -16,5 +16,5 @@
         }
     },
     "batch_size": 4,
-    "show_output": true
+    "show_output": false
 }
